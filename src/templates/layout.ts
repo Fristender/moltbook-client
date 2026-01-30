@@ -1,11 +1,20 @@
 import { getConfig } from "../db";
 
-function esc(s: string | null | undefined): string {
-  if (!s) return "";
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: unknown): string {
+  if (s === null || s === undefined) return "";
+  const str = String(s);
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export { esc };
+/** Extract a display name from a value that may be a string or an object with a name property. */
+function name(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "object" && v !== null && "name" in v) return String((v as any).name);
+  return String(v);
+}
+
+export { esc, name };
 
 export function layout(title: string, body: string, toast?: { type: "success" | "error"; message: string }): string {
   const agentName = getConfig("agent_name");

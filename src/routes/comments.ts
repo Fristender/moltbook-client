@@ -1,5 +1,5 @@
 import { partial } from "../templates/layout";
-import { renderCommentTree } from "../templates/post";
+import { renderCommentList } from "../templates/post";
 import * as api from "../api";
 import { cacheComment, logAction } from "../db";
 
@@ -22,14 +22,13 @@ export async function handleComments(req: Request, path: string): Promise<Respon
       const result = await api.createComment(postId, { content, parent_id: parentId });
       logAction("comment", postId, content.substring(0, 100));
 
-      // Re-fetch the comment tree to render new comment
+      // Re-fetch the post to get updated comment tree
       try {
-        const cdata = await api.getComments(postId);
-        const comments = cdata.comments ?? cdata ?? [];
-        for (const c of comments) cacheComment({ ...c, post_id: postId });
+        const postData = await api.getPost(postId);
+        const comments = postData.comments ?? postData.post?.comments ?? [];
 
         if (isHtmx(req)) {
-          return new Response(renderCommentTree(comments), { headers: { "Content-Type": "text/html" } });
+          return new Response(renderCommentList(comments, postId), { headers: { "Content-Type": "text/html" } });
         }
       } catch { /* ignore */ }
 

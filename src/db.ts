@@ -73,15 +73,25 @@ export function deleteConfig(key: string): void {
   db.query("DELETE FROM config WHERE key = ?").run(key);
 }
 
+// Safely extract a string for SQLite binding — handles objects like { name: "foo" }
+function str(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") return v;
+  if (typeof v === "object" && v !== null && "name" in v) return String((v as any).name);
+  return String(v);
+}
+
+function num(v: unknown): number {
+  if (typeof v === "number") return v;
+  return 0;
+}
+
 // Posts cache
-export function cachePost(post: {
-  id: string; submolt?: string; title?: string; content?: string;
-  url?: string; author?: string; score?: number; created_at?: string;
-}): void {
+export function cachePost(post: Record<string, unknown>): void {
   db.query(`INSERT OR REPLACE INTO posts_cache (id, submolt, title, content, url, author, score, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    post.id, post.submolt ?? null, post.title ?? null, post.content ?? null,
-    post.url ?? null, post.author ?? null, post.score ?? 0, post.created_at ?? null
+    str(post.id), str(post.submolt), str(post.title), str(post.content),
+    str(post.url), str(post.author), num(post.upvotes) - num(post.downvotes), str(post.created_at)
   );
 }
 
@@ -90,24 +100,19 @@ export function getCachedPost(id: string) {
 }
 
 // Comments cache
-export function cacheComment(comment: {
-  id: string; post_id?: string; parent_id?: string;
-  author?: string; content?: string; score?: number; created_at?: string;
-}): void {
+export function cacheComment(comment: Record<string, unknown>): void {
   db.query(`INSERT OR REPLACE INTO comments_cache (id, post_id, parent_id, author, content, score, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
-    comment.id, comment.post_id ?? null, comment.parent_id ?? null,
-    comment.author ?? null, comment.content ?? null, comment.score ?? 0, comment.created_at ?? null
+    str(comment.id), str(comment.post_id), str(comment.parent_id),
+    str(comment.author), str(comment.content), num(comment.score), str(comment.created_at)
   );
 }
 
 // Conversations cache
-export function cacheConversation(conv: {
-  id: string; with_agent?: string; last_message_at?: string; unread_count?: number;
-}): void {
+export function cacheConversation(conv: Record<string, unknown>): void {
   db.query(`INSERT OR REPLACE INTO conversations_cache (id, with_agent, last_message_at, unread_count)
     VALUES (?, ?, ?, ?)`).run(
-    conv.id, conv.with_agent ?? null, conv.last_message_at ?? null, conv.unread_count ?? 0
+    str(conv.id), str(conv.with_agent), str(conv.last_message_at), num(conv.unread_count)
   );
 }
 

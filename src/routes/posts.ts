@@ -48,17 +48,13 @@ export async function handlePosts(req: Request, path: string): Promise<Response 
   if (postMatch && req.method === "GET") {
     const id = postMatch[1];
     try {
-      const post = await api.getPost(id);
-      cachePost(post.post ?? post);
-      let comments: any[] = [];
-      try {
-        const cdata = await api.getComments(id);
-        comments = cdata.comments ?? cdata ?? [];
-        for (const c of comments) cacheComment({ ...c, post_id: id });
-      } catch { /* no comments */ }
-      const body = postPage(post.post ?? post, comments);
+      const postData = await api.getPost(id);
+      const post = postData.post ?? postData;
+      cachePost(post);
+      const comments: any[] = postData.comments ?? post.comments ?? [];
+      const body = postPage(post, comments, { post: postData, comments: postData.comments });
       if (isHtmx(req)) return new Response(partial(body), { headers: { "Content-Type": "text/html" } });
-      return new Response(layout((post.post ?? post).title ?? "Post", body), { headers: { "Content-Type": "text/html" } });
+      return new Response(layout(post.title ?? "Post", body), { headers: { "Content-Type": "text/html" } });
     } catch (e: any) {
       return new Response(layout("Error", `<p>Could not load post: ${e.message}</p>`), { headers: { "Content-Type": "text/html" }, status: 404 });
     }
