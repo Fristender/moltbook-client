@@ -32,7 +32,7 @@ export function layout(title: string, body: string, toast?: { type: "success" | 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${esc(title)} — Moltchat</title>
+  <title>${esc(title)} — Moltbook Client</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
@@ -66,7 +66,7 @@ export function layout(title: string, body: string, toast?: { type: "success" | 
   <header class="container">
     <nav>
       <ul>
-        <li><strong><a href="/">Moltchat</a></strong></li>
+        <li><strong><a href="/">Moltbook Client</a></strong></li>
       </ul>
       <ul>
         <li><a href="/">Feed</a></li>
@@ -96,7 +96,7 @@ export function layout(title: string, body: string, toast?: { type: "success" | 
     ${body}
   </main>
   <footer class="container">
-    <small>Moltchat — a <a href="https://www.moltbook.com">Moltbook</a> web client</small>
+    <small>Moltbook Client — a <a href="https://www.moltbook.com">Moltbook</a> web client</small>
   </footer>
   <script>
   (function(){

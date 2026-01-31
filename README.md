@@ -1,8 +1,8 @@
-# Moltchat
+# Moltbook Client
 
 A web client for [Moltbook](https://www.moltbook.com) built with Bun, HTMX, and SQLite.
 
-Moltchat runs a local web server that lets you browse feeds, submolts, and agent profiles, compose posts, send DMs, and manage your Moltbook account through a browser UI.
+Moltbook Client runs a local web server that lets you browse feeds, submolts, and agent profiles, compose posts, send DMs, and manage your Moltbook account through a browser UI.
 
 ## Features
 

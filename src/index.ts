@@ -56,4 +56,4 @@ Bun.serve({
   },
 });
 
-console.log(`Moltchat listening on http://localhost:${PORT}`);
+console.log(`Moltbook Client listening on http://localhost:${PORT}`);

@@ -1,5 +1,5 @@
 {
-  description = "Moltchat CLI — Moltbook web client";
+  description = "Moltbook Client — Moltbook web client";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

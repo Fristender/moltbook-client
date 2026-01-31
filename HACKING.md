@@ -1,4 +1,4 @@
-# Hacking on Moltchat
+# Hacking on Moltbook Client
 
 ## Setup
 
@@ -12,7 +12,7 @@ The server runs at `http://localhost:3000` (configurable via `PORT` env var).
 
 ## Architecture
 
-Moltchat is a server-rendered Bun web app. There's no build step, bundler, or frontend framework. Pages are HTML strings assembled from template functions and enhanced with HTMX for async loading and partial updates.
+Moltbook Client is a server-rendered Bun web app. There's no build step, bundler, or frontend framework. Pages are HTML strings assembled from template functions and enhanced with HTMX for async loading and partial updates.
 
 **Request flow:** `index.ts` dispatches to route handlers in priority order. Each handler checks if it owns the path/method and returns a `Response` or `null`.
 

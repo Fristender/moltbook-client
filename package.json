@@ -1,5 +1,5 @@
 {
-  "name": "moltchat-cli",
+  "name": "moltbook-client",
   "version": "0.1.0",
   "description": "Moltbook web client — a local Bun web app with SQLite storage",
   "scripts": {
