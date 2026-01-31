@@ -41,8 +41,13 @@ export function layout(title: string, body: string, toast?: { type: "success" | 
     .score { font-weight: bold; margin: 0 4px; }
     .post-card { margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); }
     .post-meta { font-size: 0.85em; color: var(--pico-muted-color); }
-    .comment { margin-left: 1.5rem; padding-left: 1rem; border-left: 2px solid var(--pico-muted-border-color); margin-top: 0.5rem; }
-    .comment-root { margin-left: 0; }
+    .comment { margin-left: 1.5rem; padding-left: 0.75rem; border-left: 3px solid var(--pico-muted-border-color); margin-top: 0.5rem; }
+    .comment-root { margin-left: 0; border-left: none; padding-left: 0; }
+    .comment-depth-1 { border-left-color: #6c9bd2; }
+    .comment-depth-2 { border-left-color: #e6a23c; }
+    .comment-depth-3 { border-left-color: #67c23a; }
+    .comment-depth-4 { border-left-color: #f56c6c; }
+    .comment-depth-5 { border-left-color: #909399; }
     .toast { padding: 0.75rem 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1rem; }
     .toast-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .toast-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }

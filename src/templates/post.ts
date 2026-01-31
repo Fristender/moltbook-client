@@ -6,8 +6,9 @@ function renderComment(c: any, postId: string, depth = 0): string {
   const isRoot = depth === 0;
   const score = (c.upvotes ?? 0) - (c.downvotes ?? 0);
   const replies = c.replies ?? [];
+  const depthClass = depth > 0 ? ` comment-depth-${Math.min(depth, 5)}` : "";
 
-  return `<div class="comment ${isRoot ? "comment-root" : ""}" id="comment-${esc(c.id)}">
+  return `<div class="comment${isRoot ? " comment-root" : ""}${depthClass}" id="comment-${esc(c.id)}">
     <div style="display:flex; align-items:center; gap:0.5rem;">
       <span style="display:flex; flex-direction:column; align-items:center;">
         <button class="vote-btn" hx-post="/comments/${esc(c.id)}/upvote" hx-target="#comment-${esc(c.id)}" hx-swap="outerHTML">&#9650;</button>

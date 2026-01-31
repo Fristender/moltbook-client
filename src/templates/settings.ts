@@ -70,40 +70,95 @@ function profilePanel(claimStatus?: any): string {
     </form>`;
 }
 
+type DiagCheck = { name: string; endpoint: string; auth: boolean };
+
+const ALL_CHECKS: DiagCheck[] = [
+  { name: "Global Feed", endpoint: "GET /posts?sort=hot", auth: false },
+  { name: "Submolts List", endpoint: "GET /submolts", auth: false },
+  { name: "Recent Agents", endpoint: "GET /agents/recent", auth: false },
+  { name: "Search", endpoint: "GET /search?q=test", auth: false },
+  { name: "Personalized Feed", endpoint: "GET /feed", auth: true },
+  { name: "Agent Status", endpoint: "GET /agents/status", auth: true },
+  { name: "My Profile", endpoint: "GET /agents/me", auth: true },
+  { name: "DM Check", endpoint: "GET /agents/dm/check", auth: true },
+  { name: "Conversations", endpoint: "GET /agents/dm/conversations", auth: true },
+  { name: "DM Requests", endpoint: "GET /agents/dm/requests", auth: true },
+];
+
+export function getChecksForUser(): DiagCheck[] {
+  const isRegistered = !!getConfig("api_key");
+  return isRegistered ? ALL_CHECKS : ALL_CHECKS.filter(c => !c.auth);
+}
+
+function rowId(index: number): string {
+  return `diag-row-${index}`;
+}
+
 function diagnosticsPanel(): string {
+  const checks = getChecksForUser();
+
+  const rows = checks.map((c, i) =>
+    `<tr id="${rowId(i)}">
+      <td>${esc(c.name)}</td>
+      <td><code>${esc(c.endpoint)}</code></td>
+      <td class="post-meta">&mdash;</td>
+      <td class="post-meta">&mdash;</td>
+    </tr>`
+  ).join("\n");
+
   return `
     <p>Test all read-only API endpoints. Requests are rate-limited with a delay between each call.</p>
-    <div id="diag-results">
-      <button hx-get="/settings/diagnostics?_fragment=1" hx-target="#diag-results" hx-swap="innerHTML" hx-indicator="#global-loader">
+    <div id="diag-summary"></div>
+    <table>
+      <thead><tr><th>Check</th><th>Endpoint</th><th>Result</th><th>Time</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div id="diag-actions">
+      <button hx-get="/settings/diagnostics?i=0" hx-target="#diag-actions" hx-swap="innerHTML">
         Run Checks
       </button>
     </div>`;
 }
 
-export function diagnosticsResults(results: { name: string; endpoint: string; ok: boolean; ms: number; error?: string }[]): string {
-  const passed = results.filter(r => r.ok).length;
-  const total = results.length;
-  const summary = passed === total
-    ? `<p><strong>${passed}/${total} passed</strong></p>`
-    : `<p><strong>${passed}/${total} passed</strong> — some endpoints failed</p>`;
+export function diagnosticRowResult(
+  index: number,
+  check: DiagCheck,
+  ok: boolean,
+  ms: number,
+  error: string | undefined,
+  total: number,
+  passed: number,
+  failed: number,
+  isLast: boolean,
+  nextCheckName?: string,
+): string {
+  // OOB swap for this row
+  const row = `<tr id="${rowId(index)}" hx-swap-oob="true">
+    <td>${esc(check.name)}</td>
+    <td><code>${esc(check.endpoint)}</code></td>
+    <td>${ok ? '<span style="color:#155724;">OK</span>' : `<span style="color:#721c24;">${esc(error ?? "FAIL")}</span>`}</td>
+    <td>${ms}ms</td>
+  </tr>`;
 
-  const rows = results.map(r =>
-    `<tr>
-      <td>${esc(r.name)}</td>
-      <td><code>${esc(r.endpoint)}</code></td>
-      <td>${r.ok ? "OK" : `<span style="color:#721c24;">${esc(r.error ?? "FAIL")}</span>`}</td>
-      <td>${r.ms}ms</td>
-    </tr>`
-  ).join("\n");
+  // OOB progress summary
+  const done = passed + failed;
+  const summaryText = isLast
+    ? (failed === 0
+        ? `<strong>${passed}/${total} passed</strong>`
+        : `<strong>${passed}/${total} passed</strong> — ${failed} failed`)
+    : `<span aria-busy="true">Running... ${done}/${total}</span>`;
+  const summary = `<div id="diag-summary" hx-swap-oob="innerHTML"><p>${summaryText}</p></div>`;
 
-  return `${summary}
-    <table>
-      <thead><tr><th>Check</th><th>Endpoint</th><th>Result</th><th>Time</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <button hx-get="/settings/diagnostics?_fragment=1" hx-target="#diag-results" hx-swap="innerHTML" hx-indicator="#global-loader" style="margin-top:1rem;">
-      Run Again
-    </button>`;
+  // Chain: trigger next check or show "Run Again" button
+  const next = isLast
+    ? `<button hx-get="/settings/diagnostics?i=0" hx-target="#diag-actions" hx-swap="innerHTML">
+        Run Again
+      </button>`
+    : `<div hx-get="/settings/diagnostics?i=${index + 1}&passed=${passed}&failed=${failed}" hx-trigger="load" hx-target="#diag-actions" hx-swap="innerHTML">
+        <span aria-busy="true">Checking ${esc(nextCheckName ?? "")}...</span>
+      </div>`;
+
+  return row + summary + next;
 }
 
 export function settingsPage(claimStatus?: any, error?: string): string {
