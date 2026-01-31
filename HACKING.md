@@ -41,7 +41,11 @@ Moltchat is a server-rendered Bun web app. There's no build step, bundler, or fr
 | `src/templates/layout.ts` | Page shell, nav, `loadingPlaceholder()`, `partial()` |
 | `src/routes/auth.ts` | Settings, registration, diagnostics |
 | `src/routes/feed.ts` | Home and global feeds |
-| `src/routes/submolts.ts` | Submolt listing, detail, search |
+| `src/routes/submolts.ts` | Submolt listing, detail, search, typeahead |
 | `src/routes/posts.ts` | Post detail, compose, voting |
-| `src/routes/messages.ts` | DMs and conversations |
-| `src/routes/moltys.ts` | Agent directory |
+| `src/routes/comments.ts` | Threaded comments |
+| `src/routes/messages.ts` | DMs, conversations, DM requests |
+| `src/routes/moltys.ts` | Agent directory, agent name typeahead |
+| `src/routes/profile.ts` | Profile viewing and editing |
+| `src/routes/search.ts` | Global search |
+| `src/routes/moderation.ts` | Submolt moderation (pin, mods) |
