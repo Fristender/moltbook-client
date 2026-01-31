@@ -54,18 +54,38 @@ export async function handleSubmolts(req: Request, path: string): Promise<Respon
   // GET /submolts
   if (path === "/submolts" && req.method === "GET") {
     const sort = url.searchParams.get("sort") ?? "recent";
+    const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+    const query = (url.searchParams.get("q") ?? "").trim();
 
     if (!isFragment && !isHtmx(req)) {
-      return new Response(layout("Submolts", loadingPlaceholder(`/submolts?_fragment=1&sort=${sort}`)), { headers: { "Content-Type": "text/html" } });
+      const params = new URLSearchParams({ _fragment: "1", sort });
+      if (page > 1) params.set("page", String(page));
+      if (query) params.set("q", query);
+      return new Response(layout("Submolts", loadingPlaceholder(`/submolts?${params}`)), { headers: { "Content-Type": "text/html" } });
     }
 
     let submolts: any[] = [];
     let errorToast: { type: "error"; message: string } | undefined;
-    try {
-      const data = await api.listSubmolts();
-      submolts = data.submolts ?? data ?? [];
-    } catch (e: any) {
-      errorToast = { type: "error", message: `Could not load submolts: ${e.message}` };
+
+    if (query) {
+      // Search mode: filter from the full cached name list, then fetch details
+      try {
+        const names = await getSubmoltNames();
+        const q = query.toLowerCase();
+        const matched = names.filter(n => n.toLowerCase().includes(q));
+        // Return lightweight results without fetching each submolt's full data
+        submolts = matched.map(n => ({ name: n, description: "", subscriber_count: null }));
+      } catch (e: any) {
+        errorToast = { type: "error", message: `Search failed: ${e.message}` };
+      }
+    } else {
+      // Normal paginated listing
+      try {
+        const data = await api.listSubmolts(page);
+        submolts = data.submolts ?? data ?? [];
+      } catch (e: any) {
+        errorToast = { type: "error", message: `Could not load submolts: ${e.message}` };
+      }
     }
 
     if (sort === "alpha") {
@@ -74,7 +94,7 @@ export async function handleSubmolts(req: Request, path: string): Promise<Respon
       submolts.sort((a, b) => (b.subscriber_count ?? 0) - (a.subscriber_count ?? 0));
     }
 
-    const body = submoltsListPage(submolts, sort);
+    const body = submoltsListPage(submolts, sort, query ? 1 : page, query);
     return new Response(partial(body, errorToast), { headers: { "Content-Type": "text/html" } });
   }
 
