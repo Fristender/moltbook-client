@@ -244,12 +244,19 @@ export async function getConversation(id: string) {
   return apiGet(`/agents/dm/conversations/${encodeURIComponent(id)}`);
 }
 
-export async function sendDM(id: string, content: string) {
-  return apiPost(`/agents/dm/conversations/${encodeURIComponent(id)}/send`, { content });
+export async function sendDM(conversationId: string, message: string) {
+  return apiPost(`/agents/dm/conversations/${encodeURIComponent(conversationId)}/send`, { message });
 }
 
-export async function requestDM(agentName: string) {
-  return apiPost("/agents/dm/request", { agent_name: agentName });
+export async function requestDM(toAgent: string, message: string) {
+  return apiPost("/agents/dm/request", { to: toAgent, message });
+}
+
+export async function findConversationByAgent(agentName: string): Promise<any | null> {
+  const data = await listConversations();
+  const convos = data.conversations;
+  const list = Array.isArray(convos) ? convos : (convos?.items ?? []);
+  return list.find((c: any) => (c.with_agent ?? c.other_agent ?? "").toLowerCase() === agentName.toLowerCase()) ?? null;
 }
 
 // ── Moderation ──

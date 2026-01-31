@@ -15,8 +15,7 @@ export async function handleProfile(req: Request, path: string): Promise<Respons
     try {
       const agent = await api.getProfile(name);
       const profile = agent.agent ?? agent;
-      // Try to get agent's posts — some APIs expose this via profile
-      const posts = profile.recent_posts ?? profile.posts ?? [];
+      const posts = agent.recentPosts ?? agent.recent_posts ?? profile.recentPosts ?? profile.recent_posts ?? [];
       // TODO: determine follow status
       const body = profilePage(profile, posts, false);
       if (isHtmx(req)) return new Response(partial(body), { headers: { "Content-Type": "text/html" } });

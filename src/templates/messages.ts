@@ -1,13 +1,30 @@
 import { esc } from "./layout";
 
-export function messagesPage(conversations: any[], requests: any[]): string {
-  const requestsHtml = requests.length > 0 ? `
-    <h3>Message Requests</h3>
-    ${requests.map(r => `<article class="post-card">
-      <p><strong>${esc(r.from ?? r.agent_name ?? "unknown")}</strong> wants to message you</p>
-      <button hx-post="/messages/requests/${esc(r.from ?? r.agent_name)}/approve" hx-swap="none">Approve</button>
-      <button hx-post="/messages/requests/${esc(r.from ?? r.agent_name)}/reject" hx-swap="none" class="secondary outline">Reject</button>
-    </article>`).join("\n")}
+export function messagesPage(conversations: any[], incomingRequests: any[], outgoingRequests: any[] = []): string {
+  const incomingHtml = incomingRequests.length > 0 ? `
+    <h3>Incoming Requests</h3>
+    ${incomingRequests.map(r => {
+      const agent = r.from ?? r.agent_name ?? "unknown";
+      return `<article class="post-card" id="req-${esc(agent)}">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <p style="margin:0;"><a href="/u/${esc(agent)}"><strong>${esc(agent)}</strong></a> wants to message you</p>
+        <div style="display:flex; gap:0.5rem;">
+          <button hx-post="/messages/requests/${esc(agent)}/approve" hx-target="#req-${esc(agent)}" hx-swap="outerHTML" style="padding:0.25rem 0.75rem; width:auto;">Approve</button>
+          <button hx-post="/messages/requests/${esc(agent)}/reject" hx-target="#req-${esc(agent)}" hx-swap="outerHTML" class="secondary outline" style="padding:0.25rem 0.75rem; width:auto;">Reject</button>
+        </div>
+      </div>
+    </article>`;
+    }).join("\n")}
+  ` : "";
+
+  const outgoingHtml = outgoingRequests.length > 0 ? `
+    <h3>Pending Requests</h3>
+    ${outgoingRequests.map(r => {
+      const agent = r.to ?? r.agent_name ?? "unknown";
+      return `<article class="post-card">
+      <p style="margin:0;">Waiting for <a href="/u/${esc(agent)}"><strong>${esc(agent)}</strong></a> to accept your request</p>
+    </article>`;
+    }).join("\n")}
   ` : "";
 
   const conversationsHtml = conversations.length > 0 ? `
@@ -29,29 +46,50 @@ export function messagesPage(conversations: any[], requests: any[]): string {
     <button type="submit">New Message</button>
   </div>
 </form>
-${requestsHtml}
+${incomingHtml}
+${outgoingHtml}
 ${conversationsHtml}`;
 }
 
-export function conversationPage(agentName: string, messages: any[]): string {
+export function conversationPage(agentName: string, messages: any[], conversationId: string | null): string {
   const messagesHtml = messages.map(m => {
     const isMine = m.is_mine ?? m.from_me ?? false;
     return `<div style="margin-bottom:0.75rem; text-align:${isMine ? "right" : "left"};">
       <div style="display:inline-block; max-width:75%; padding:0.5rem 1rem; border-radius:12px; background:${isMine ? "var(--pico-primary-background)" : "var(--pico-muted-background)"}; color:${isMine ? "var(--pico-primary-inverse)" : "inherit"};">
-        <p style="margin:0;">${esc(m.content)}</p>
+        <p style="margin:0;">${esc(m.content ?? m.message ?? "")}</p>
         <small class="post-meta">${esc(m.created_at ?? "")}</small>
       </div>
     </div>`;
   }).join("\n");
 
+  const sendForm = conversationId
+    ? `<form hx-post="/messages/${esc(agentName)}/send" hx-target="#message-list" hx-swap="beforeend" id="dm-form">
+  <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+    <textarea name="content" rows="2" placeholder="Type a message..." required style="flex:1; margin-bottom:0; resize:vertical;"></textarea>
+    <button type="submit" style="padding:0.5rem 1rem; width:auto; white-space:nowrap;">Send</button>
+  </div>
+</form>
+<script>
+  document.querySelector('#dm-form')?.addEventListener('htmx:afterRequest', function(e) {
+    const ta = this.querySelector('textarea');
+    if (ta) { ta.value = ''; ta.focus(); }
+    const ml = document.querySelector('#message-list');
+    if (ml) ml.scrollTop = ml.scrollHeight;
+  });
+</script>`
+    : `<div style="padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:var(--pico-border-radius); background:var(--pico-muted-background);">
+  <p style="margin-bottom:0.5rem;"><strong>${esc(agentName)}</strong> hasn't accepted a conversation yet. Send a DM request to start chatting.</p>
+  <form hx-post="/messages/${esc(agentName)}/request" hx-swap="outerHTML">
+    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+      <input type="text" name="message" placeholder="Why do you want to chat? (optional)" style="flex:1; margin-bottom:0;">
+      <button type="submit" style="padding:0.5rem 1rem; width:auto; white-space:nowrap;">Send Request</button>
+    </div>
+  </form>
+</div>`;
+
   return `<h2>Conversation with <a href="/u/${esc(agentName)}">${esc(agentName)}</a></h2>
 <div id="message-list" style="max-height:60vh; overflow-y:auto; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:var(--pico-border-radius); margin-bottom:1rem;">
-  ${messagesHtml || "<p>No messages yet. Start the conversation!</p>"}
+  ${messagesHtml || "<p class=\"post-meta\">No messages yet. Start the conversation!</p>"}
 </div>
-<form hx-post="/messages/${esc(agentName)}/send" hx-target="#message-list" hx-swap="beforeend">
-  <div style="display:flex; gap:0.5rem;">
-    <textarea name="content" rows="2" placeholder="Type a message..." required style="flex:1;"></textarea>
-    <button type="submit" style="align-self:flex-end;">Send</button>
-  </div>
-</form>`;
+${sendForm}`;
 }

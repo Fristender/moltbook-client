@@ -18,7 +18,7 @@ export async function handleMessages(req: Request, path: string): Promise<Respon
     }
 
     let conversations: any[] = [];
-    let requests: any[] = [];
+    let requests: any[] = [];  // incoming
     const errors: string[] = [];
     try {
       const dmData = await api.listConversations();
@@ -28,16 +28,16 @@ export async function handleMessages(req: Request, path: string): Promise<Respon
     } catch (e: any) {
       errors.push(`Could not load conversations: ${e.message}`);
     }
+    let outgoing: any[] = [];
     try {
       const reqData = await api.getDMRequests();
-      const incoming = reqData.incoming?.requests ?? [];
-      const outgoing = reqData.outgoing?.requests ?? [];
-      requests = [...incoming, ...outgoing];
+      requests = reqData.incoming?.requests ?? [];
+      outgoing = reqData.outgoing?.requests ?? [];
     } catch (e: any) {
       errors.push(`Could not load DM requests: ${e.message}`);
     }
     const errorToast = errors.length ? { type: "error" as const, message: errors.join("; ") } : undefined;
-    const body = messagesPage(conversations, requests);
+    const body = messagesPage(conversations, requests, outgoing);
     return new Response(partial(body, errorToast), { headers: { "Content-Type": "text/html" } });
   }
 
@@ -57,15 +57,29 @@ export async function handleMessages(req: Request, path: string): Promise<Respon
       return new Response(layout(`Chat with ${agentName}`, loadingPlaceholder(`/messages/${encodeURIComponent(agentName)}?_fragment=1`)), { headers: { "Content-Type": "text/html" } });
     }
 
+    // Look up existing conversation by agent name
+    let conversationId: string | null = null;
     let messages: any[] = [];
     let errorToast: { type: "error"; message: string } | undefined;
+
     try {
-      const data = await api.getConversation(agentName);
-      messages = data.messages ?? data ?? [];
+      const convo = await api.findConversationByAgent(agentName);
+      if (convo) {
+        conversationId = convo.conversation_id ?? convo.id ?? null;
+        if (conversationId) {
+          try {
+            const data = await api.getConversation(conversationId);
+            messages = data.messages ?? data ?? [];
+          } catch (e: any) {
+            errorToast = { type: "error", message: `Could not load messages: ${e.message}` };
+          }
+        }
+      }
     } catch (e: any) {
-      errorToast = { type: "error", message: `Could not load messages: ${e.message}` };
+      // If conversation lookup fails, treat as no conversation
     }
-    const body = conversationPage(agentName, messages);
+
+    const body = conversationPage(agentName, messages, conversationId);
     return new Response(partial(body, errorToast), { headers: { "Content-Type": "text/html" } });
   }
 
@@ -79,7 +93,15 @@ export async function handleMessages(req: Request, path: string): Promise<Respon
       if (!content) {
         return new Response(partial("", { type: "error", message: "Message cannot be empty" }), { headers: { "Content-Type": "text/html" } });
       }
-      await api.sendDM(agentName, content);
+
+      // Find the conversation ID for this agent
+      const convo = await api.findConversationByAgent(agentName);
+      const conversationId = convo?.conversation_id ?? convo?.id;
+      if (!conversationId) {
+        return new Response(partial("", { type: "error", message: "No active conversation. Send a DM request first." }), { headers: { "Content-Type": "text/html" } });
+      }
+
+      await api.sendDM(conversationId, content);
       logAction("send_dm", agentName, content.substring(0, 100));
 
       // Return the new message bubble for HTMX append
@@ -92,6 +114,26 @@ export async function handleMessages(req: Request, path: string): Promise<Respon
         </div>`;
         return new Response(bubble, { headers: { "Content-Type": "text/html" } });
       }
+      return Response.redirect(`/messages/${encodeURIComponent(agentName)}`, 303);
+    } catch (e: any) {
+      return new Response(partial("", { type: "error", message: e.message }), { headers: { "Content-Type": "text/html" } });
+    }
+  }
+
+  // POST /messages/:agent/request — send a DM request to start a new conversation
+  const requestMatch = path.match(/^\/messages\/([^/]+)\/request$/);
+  if (requestMatch && req.method === "POST") {
+    const agentName = decodeURIComponent(requestMatch[1]);
+    try {
+      const form = await req.formData();
+      const message = form.get("message")?.toString().trim() || "Hi, I'd like to chat!";
+      await api.requestDM(agentName, message);
+      logAction("request_dm", agentName, message.substring(0, 100));
+
+      const successHtml = `<div style="padding:1rem; border:1px solid var(--pico-primary-border-color); border-radius:var(--pico-border-radius); background:var(--pico-primary-background); color:var(--pico-primary-inverse);">
+  <p style="margin:0;">DM request sent to <strong>${esc(agentName)}</strong>. You'll be able to message them once they approve.</p>
+</div>`;
+      if (isHtmx(req)) return new Response(successHtml, { headers: { "Content-Type": "text/html" } });
       return Response.redirect(`/messages/${encodeURIComponent(agentName)}`, 303);
     } catch (e: any) {
       return new Response(partial("", { type: "error", message: e.message }), { headers: { "Content-Type": "text/html" } });
