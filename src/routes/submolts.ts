@@ -1,4 +1,4 @@
-import { layout, partial } from "../templates/layout";
+import { layout, partial, loadingPlaceholder } from "../templates/layout";
 import { submoltsListPage, submoltDetailPage, createSubmoltPage } from "../templates/submolts";
 import * as api from "../api";
 import { cachePost, logAction } from "../db";
@@ -8,16 +8,25 @@ function isHtmx(req: Request): boolean {
 }
 
 export async function handleSubmolts(req: Request, path: string): Promise<Response | null> {
+  const url = new URL(req.url);
+  const isFragment = url.searchParams.has("_fragment");
+
   // GET /submolts
   if (path === "/submolts" && req.method === "GET") {
+    if (!isFragment && !isHtmx(req)) {
+      return new Response(layout("Submolts", loadingPlaceholder("/submolts?_fragment=1")), { headers: { "Content-Type": "text/html" } });
+    }
+
     let submolts: any[] = [];
+    let errorToast: { type: "error"; message: string } | undefined;
     try {
       const data = await api.listSubmolts();
       submolts = data.submolts ?? data ?? [];
-    } catch { /* empty */ }
+    } catch (e: any) {
+      errorToast = { type: "error", message: `Could not load submolts: ${e.message}` };
+    }
     const body = submoltsListPage(submolts);
-    if (isHtmx(req)) return new Response(partial(body), { headers: { "Content-Type": "text/html" } });
-    return new Response(layout("Submolts", body), { headers: { "Content-Type": "text/html" } });
+    return new Response(partial(body, errorToast), { headers: { "Content-Type": "text/html" } });
   }
 
   // GET /submolts/new
@@ -47,20 +56,28 @@ export async function handleSubmolts(req: Request, path: string): Promise<Respon
   const submoltMatch = path.match(/^\/s\/([^/]+)$/);
   if (submoltMatch && req.method === "GET") {
     const name = decodeURIComponent(submoltMatch[1]);
+
+    if (!isFragment && !isHtmx(req)) {
+      return new Response(layout(name, loadingPlaceholder(`/s/${encodeURIComponent(name)}?_fragment=1`)), { headers: { "Content-Type": "text/html" } });
+    }
+
     try {
       const submolt = await api.getSubmolt(name);
       let posts: any[] = [];
+      let feedError: { type: "error"; message: string } | undefined;
       try {
         const fdata = await api.getSubmoltFeed(name);
         posts = fdata.posts ?? fdata ?? [];
         for (const p of posts) cachePost(p);
-      } catch { /* empty */ }
+      } catch (e: any) {
+        feedError = { type: "error", message: `Could not load submolt feed: ${e.message}` };
+      }
       // TODO: determine subscription status — for now default false
       const body = submoltDetailPage(submolt.submolt ?? submolt, posts, false);
-      if (isHtmx(req)) return new Response(partial(body), { headers: { "Content-Type": "text/html" } });
-      return new Response(layout(name, body), { headers: { "Content-Type": "text/html" } });
+      return new Response(partial(body, feedError), { headers: { "Content-Type": "text/html" } });
     } catch (e: any) {
-      return new Response(layout("Error", `<p>Could not load submolt: ${e.message}</p>`), { headers: { "Content-Type": "text/html" }, status: 404 });
+      const errorHtml = `<p>Could not load submolt: ${e.message}</p>`;
+      return new Response(partial(errorHtml, { type: "error", message: `Could not load submolt: ${e.message}` }), { headers: { "Content-Type": "text/html" } });
     }
   }
 

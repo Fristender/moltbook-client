@@ -1,4 +1,4 @@
-import { layout, partial, esc } from "../templates/layout";
+import { layout, partial, esc, loadingPlaceholder } from "../templates/layout";
 import { messagesPage, conversationPage } from "../templates/messages";
 import * as api from "../api";
 import { cacheConversation, logAction } from "../db";
@@ -8,27 +8,38 @@ function isHtmx(req: Request): boolean {
 }
 
 export async function handleMessages(req: Request, path: string): Promise<Response | null> {
+  const url = new URL(req.url);
+  const isFragment = url.searchParams.has("_fragment");
+
   // GET /messages
   if (path === "/messages" && req.method === "GET") {
+    if (!isFragment && !isHtmx(req)) {
+      return new Response(layout("Messages", loadingPlaceholder("/messages?_fragment=1")), { headers: { "Content-Type": "text/html" } });
+    }
+
     let conversations: any[] = [];
     let requests: any[] = [];
+    const errors: string[] = [];
     try {
       const dmData = await api.checkDMs();
       conversations = dmData.conversations ?? dmData ?? [];
       for (const c of conversations) cacheConversation(c);
-    } catch { /* empty */ }
+    } catch (e: any) {
+      errors.push(`Could not load conversations: ${e.message}`);
+    }
     try {
       const reqData = await api.getDMRequests();
       requests = reqData.requests ?? reqData ?? [];
-    } catch { /* empty */ }
+    } catch (e: any) {
+      errors.push(`Could not load DM requests: ${e.message}`);
+    }
+    const errorToast = errors.length ? { type: "error" as const, message: errors.join("; ") } : undefined;
     const body = messagesPage(conversations, requests);
-    if (isHtmx(req)) return new Response(partial(body), { headers: { "Content-Type": "text/html" } });
-    return new Response(layout("Messages", body), { headers: { "Content-Type": "text/html" } });
+    return new Response(partial(body, errorToast), { headers: { "Content-Type": "text/html" } });
   }
 
   // GET /messages/new?agent=xxx — redirect to conversation
   if (path === "/messages/new" && req.method === "GET") {
-    const url = new URL(req.url);
     const agent = url.searchParams.get("agent")?.trim();
     if (agent) return Response.redirect(`/messages/${encodeURIComponent(agent)}`, 303);
     return Response.redirect("/messages", 303);
@@ -38,14 +49,21 @@ export async function handleMessages(req: Request, path: string): Promise<Respon
   const convMatch = path.match(/^\/messages\/([^/]+)$/);
   if (convMatch && req.method === "GET") {
     const agentName = decodeURIComponent(convMatch[1]);
+
+    if (!isFragment && !isHtmx(req)) {
+      return new Response(layout(`Chat with ${agentName}`, loadingPlaceholder(`/messages/${encodeURIComponent(agentName)}?_fragment=1`)), { headers: { "Content-Type": "text/html" } });
+    }
+
     let messages: any[] = [];
+    let errorToast: { type: "error"; message: string } | undefined;
     try {
       const data = await api.getConversation(agentName);
       messages = data.messages ?? data ?? [];
-    } catch { /* empty */ }
+    } catch (e: any) {
+      errorToast = { type: "error", message: `Could not load messages: ${e.message}` };
+    }
     const body = conversationPage(agentName, messages);
-    if (isHtmx(req)) return new Response(partial(body), { headers: { "Content-Type": "text/html" } });
-    return new Response(layout(`Chat with ${agentName}`, body), { headers: { "Content-Type": "text/html" } });
+    return new Response(partial(body, errorToast), { headers: { "Content-Type": "text/html" } });
   }
 
   // POST /messages/:agent/send

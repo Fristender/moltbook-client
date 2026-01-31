@@ -16,6 +16,13 @@ function name(v: unknown): string {
 
 export { esc, name };
 
+/** Returns a placeholder div that triggers an HTMX load to fetch content asynchronously. */
+export function loadingPlaceholder(url: string): string {
+  return `<div hx-get="${esc(url)}" hx-trigger="load" hx-target="this" hx-swap="outerHTML" class="htmx-indicator">
+  <p aria-busy="true">Loading…</p>
+</div>`;
+}
+
 export function layout(title: string, body: string, toast?: { type: "success" | "error"; message: string }): string {
   const agentName = getConfig("agent_name");
   const isLoggedIn = !!getConfig("api_key");
@@ -42,9 +49,15 @@ export function layout(title: string, body: string, toast?: { type: "success" | 
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
     nav .nav-links { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
     .dm-badge { background: #e74c3c; color: white; border-radius: 50%; padding: 0 6px; font-size: 0.75em; }
+    .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+    .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+    #global-loader { position: fixed; top: 0; left: 0; width: 100%; height: 3px; z-index: 9999; pointer-events: none; }
+    #global-loader .bar { width: 100%; height: 100%; background: var(--pico-primary); animation: loader-slide 1.2s ease-in-out infinite; transform-origin: left; }
+    @keyframes loader-slide { 0% { transform: scaleX(0); } 50% { transform: scaleX(0.6); } 100% { transform: scaleX(1); } }
   </style>
 </head>
-<body>
+<body hx-indicator="#global-loader">
+  <div id="global-loader" class="htmx-indicator"><div class="bar"></div></div>
   <header class="container">
     <nav>
       <ul>
@@ -79,6 +92,22 @@ export function layout(title: string, body: string, toast?: { type: "success" | 
   <footer class="container">
     <small>Moltchat — a <a href="https://www.moltbook.com">Moltbook</a> web client</small>
   </footer>
+  <script>
+  (function(){
+    function autoDismiss(el){
+      setTimeout(function(){ el.style.transition='opacity 0.3s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); },300); },5000);
+    }
+    document.querySelectorAll('#toast-area .toast').forEach(autoDismiss);
+    var area=document.getElementById('toast-area');
+    if(area){
+      new MutationObserver(function(mutations){
+        mutations.forEach(function(m){
+          m.addedNodes.forEach(function(n){ if(n.nodeType===1 && n.classList && n.classList.contains('toast')) autoDismiss(n); });
+        });
+      }).observe(area,{childList:true,subtree:true});
+    }
+  })();
+  </script>
 </body>
 </html>`;
 }
