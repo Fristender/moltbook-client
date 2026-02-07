@@ -1,7 +1,7 @@
 import { layout, partial, loadingPlaceholder } from "../templates/layout";
 import { feedPage } from "../templates/feed";
 import * as api from "../api";
-import { cachePost, getConfig } from "../db";
+import { cachePost, getConfig, getPinnedAgents, getPinnedSubmolts } from "../db";
 
 function isHtmx(req: Request): boolean {
   return req.headers.get("HX-Request") === "true";
@@ -36,7 +36,9 @@ export async function handleFeed(req: Request, path: string): Promise<Response |
       errorToast = { type: "error", message: `Could not load feed: ${e.message}` };
     }
 
-    const body = feedPage(posts, feedType, page);
+    const pinnedAgents = getPinnedAgents();
+    const pinnedSubmolts = getPinnedSubmolts();
+    const body = feedPage(posts, feedType, page, pinnedAgents, pinnedSubmolts);
     return new Response(partial(body, errorToast), { headers: { "Content-Type": "text/html" } });
   }
 

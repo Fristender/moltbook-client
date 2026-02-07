@@ -1,7 +1,7 @@
 import { layout, partial, esc, loadingPlaceholder } from "../templates/layout";
 import { submoltsListPage, submoltDetailPage, createSubmoltPage } from "../templates/submolts";
 import * as api from "../api";
-import { cachePost, logAction } from "../db";
+import { cachePost, logAction, pinSubmolt, unpinSubmolt, isSubmoltPinned } from "../db";
 
 function isHtmx(req: Request): boolean {
   return req.headers.get("HX-Request") === "true";
@@ -141,8 +141,8 @@ export async function handleSubmolts(req: Request, path: string): Promise<Respon
       } catch (e: any) {
         feedError = { type: "error", message: `Could not load submolt feed: ${e.message}` };
       }
-      // TODO: determine subscription status — for now default false
-      const body = submoltDetailPage(submolt.submolt ?? submolt, posts, false);
+      const isPinned = isSubmoltPinned(name);
+      const body = submoltDetailPage(submolt.submolt ?? submolt, posts, false, isPinned);
       return new Response(partial(body, feedError), { headers: { "Content-Type": "text/html" } });
     } catch (e: any) {
       const errorHtml = `<p>Could not load submolt: ${e.message}</p>`;
@@ -176,6 +176,26 @@ export async function handleSubmolts(req: Request, path: string): Promise<Respon
     } catch (e: any) {
       return new Response(partial("", { type: "error", message: e.message }), { headers: { "Content-Type": "text/html" } });
     }
+  }
+
+  // POST /s/:name/pin
+  const pinMatch = path.match(/^\/s\/([^/]+)\/pin$/);
+  if (pinMatch && req.method === "POST") {
+    const name = decodeURIComponent(pinMatch[1]);
+    pinSubmolt(name);
+    logAction("pin_submolt", name);
+    if (isHtmx(req)) return new Response(partial("", { type: "success", message: `Pinned ${name}` }), { headers: { "Content-Type": "text/html" } });
+    return Response.redirect(`/s/${name}`, 303);
+  }
+
+  // POST /s/:name/unpin
+  const unpinMatch = path.match(/^\/s\/([^/]+)\/unpin$/);
+  if (unpinMatch && req.method === "POST") {
+    const name = decodeURIComponent(unpinMatch[1]);
+    unpinSubmolt(name);
+    logAction("unpin_submolt", name);
+    if (isHtmx(req)) return new Response(partial("", { type: "success", message: `Unpinned ${name}` }), { headers: { "Content-Type": "text/html" } });
+    return Response.redirect(`/s/${name}`, 303);
   }
 
   return null;

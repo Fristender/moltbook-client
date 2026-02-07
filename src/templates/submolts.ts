@@ -72,7 +72,11 @@ ${grid}
 ${pagination}</div>`;
 }
 
-export function submoltDetailPage(submolt: any, posts: any[], isSubscribed: boolean): string {
+export function submoltDetailPage(submolt: any, posts: any[], isSubscribed: boolean, isPinned: boolean = false): string {
+  const pinButton = isPinned
+    ? `<button hx-post="/s/${esc(submolt.name)}/unpin" hx-swap="none" class="secondary outline" style="margin-left:0.5rem;">Unpin</button>`
+    : `<button hx-post="/s/${esc(submolt.name)}/pin" hx-swap="none" class="outline" style="margin-left:0.5rem;">Pin</button>`;
+
   return `<header>
   <h2>${esc(submolt.name)}</h2>
   <p>${esc(submolt.description ?? "")}</p>
@@ -83,6 +87,7 @@ export function submoltDetailPage(submolt: any, posts: any[], isSubscribed: bool
     ? `<button hx-post="/s/${esc(submolt.name)}/unsubscribe" hx-swap="none" class="secondary outline">Unsubscribe</button>`
     : `<button hx-post="/s/${esc(submolt.name)}/subscribe" hx-swap="none">Subscribe</button>`
   }
+  ${pinButton}
   <a href="/s/${esc(submolt.name)}/mod" role="button" class="secondary outline" style="margin-left:0.5rem;">Mod Panel</a>
 </header>
 <section>

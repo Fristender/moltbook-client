@@ -35,11 +35,20 @@ export function renderPostCard(post: any): string {
 </article>`;
 }
 
-export function feedPage(posts: any[], feedType: "personal" | "global", page: number): string {
+export function feedPage(posts: any[], feedType: "personal" | "global", page: number, pinnedAgents: string[] = [], pinnedSubmolts: string[] = []): string {
   const tabs = `<nav style="margin-bottom:1rem;">
     <a href="/" ${feedType === "personal" ? 'aria-current="page"' : ""}>My Feed</a> &middot;
     <a href="/global" ${feedType === "global" ? 'aria-current="page"' : ""}>Global Feed</a>
   </nav>`;
+
+  const pinnedSection = (pinnedAgents.length > 0 || pinnedSubmolts.length > 0) ? `
+  <div style="margin-bottom:1rem; padding:0.75rem; background:var(--pico-card-background-color); border-radius:var(--pico-border-radius); border:1px solid var(--pico-muted-border-color);">
+    <strong style="font-size:0.9em;">Pinned</strong>
+    <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;">
+      ${pinnedSubmolts.map(s => `<a href="/s/${esc(s)}" class="badge" style="text-decoration:none;">s/${esc(s)}</a>`).join("")}
+      ${pinnedAgents.map(a => `<a href="/u/${esc(a)}" class="badge" style="text-decoration:none; background:var(--pico-secondary-background); color:var(--pico-secondary-inverse);">u/${esc(a)}</a>`).join("")}
+    </div>
+  </div>` : "";
 
   const postCards = posts.length > 0
     ? posts.map(renderPostCard).join("\n")
@@ -53,6 +62,7 @@ export function feedPage(posts: any[], feedType: "personal" | "global", page: nu
 
   return `<h2>${feedType === "global" ? "Global" : "My"} Feed</h2>
 ${tabs}
+${pinnedSection}
 <div id="feed-list">
   ${postCards}
 </div>

@@ -57,6 +57,16 @@ db.exec(`
     detail TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS pinned_agents (
+    name TEXT PRIMARY KEY,
+    pinned_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS pinned_submolts (
+    name TEXT PRIMARY KEY,
+    pinned_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // Config helpers
@@ -125,6 +135,44 @@ export function logAction(action: string, targetId?: string, detail?: string): v
 
 export function getRecentActions(limit = 50) {
   return db.query("SELECT * FROM action_log ORDER BY created_at DESC LIMIT ?").all(limit);
+}
+
+// Pinned agents
+export function pinAgent(name: string): void {
+  db.query("INSERT OR REPLACE INTO pinned_agents (name) VALUES (?)").run(name);
+}
+
+export function unpinAgent(name: string): void {
+  db.query("DELETE FROM pinned_agents WHERE name = ?").run(name);
+}
+
+export function isAgentPinned(name: string): boolean {
+  const row = db.query("SELECT 1 FROM pinned_agents WHERE name = ?").get(name);
+  return !!row;
+}
+
+export function getPinnedAgents(): string[] {
+  const rows = db.query("SELECT name FROM pinned_agents ORDER BY pinned_at DESC").all() as { name: string }[];
+  return rows.map(r => r.name);
+}
+
+// Pinned submolts
+export function pinSubmolt(name: string): void {
+  db.query("INSERT OR REPLACE INTO pinned_submolts (name) VALUES (?)").run(name);
+}
+
+export function unpinSubmolt(name: string): void {
+  db.query("DELETE FROM pinned_submolts WHERE name = ?").run(name);
+}
+
+export function isSubmoltPinned(name: string): boolean {
+  const row = db.query("SELECT 1 FROM pinned_submolts WHERE name = ?").get(name);
+  return !!row;
+}
+
+export function getPinnedSubmolts(): string[] {
+  const rows = db.query("SELECT name FROM pinned_submolts ORDER BY pinned_at DESC").all() as { name: string }[];
+  return rows.map(r => r.name);
 }
 
 export default db;

@@ -2,9 +2,13 @@ import { esc } from "./layout";
 import { getConfig } from "../db";
 import { renderPostCard } from "./feed";
 
-export function profilePage(agent: any, posts: any[], isFollowing: boolean): string {
+export function profilePage(agent: any, posts: any[], isFollowing: boolean, isPinned: boolean = false): string {
   const myName = getConfig("agent_name");
   const isSelf = myName === agent.name;
+
+  const pinButton = isPinned
+    ? `<button hx-post="/u/${esc(agent.name)}/unpin" hx-swap="none" class="secondary outline" style="margin-left:0.5rem;">Unpin</button>`
+    : `<button hx-post="/u/${esc(agent.name)}/pin" hx-swap="none" class="outline" style="margin-left:0.5rem;">Pin</button>`;
 
   return `<article>
   <header>
@@ -23,6 +27,7 @@ export function profilePage(agent: any, posts: any[], isFollowing: boolean): str
         ? `<button hx-post="/u/${esc(agent.name)}/unfollow" hx-swap="none" class="secondary outline">Unfollow</button>`
         : `<button hx-post="/u/${esc(agent.name)}/follow" hx-swap="none">Follow</button>`
       }
+      ${pinButton}
       <a href="/messages/${esc(agent.name)}" role="button" class="secondary outline" style="margin-left:0.5rem;">Message</a>
     `}
   </header>

@@ -1,7 +1,7 @@
 import { layout, partial } from "../templates/layout";
 import { profilePage } from "../templates/profile";
 import * as api from "../api";
-import { logAction, getConfig } from "../db";
+import { logAction, getConfig, pinAgent, unpinAgent, isAgentPinned } from "../db";
 
 function isHtmx(req: Request): boolean {
   return req.headers.get("HX-Request") === "true";
@@ -16,8 +16,8 @@ export async function handleProfile(req: Request, path: string): Promise<Respons
       const agent = await api.getProfile(name);
       const profile = agent.agent ?? agent;
       const posts = agent.recentPosts ?? agent.recent_posts ?? profile.recentPosts ?? profile.recent_posts ?? [];
-      // TODO: determine follow status
-      const body = profilePage(profile, posts, false);
+      const isPinned = isAgentPinned(name);
+      const body = profilePage(profile, posts, false, isPinned);
       if (isHtmx(req)) return new Response(partial(body), { headers: { "Content-Type": "text/html" } });
       return new Response(layout(name, body), { headers: { "Content-Type": "text/html" } });
     } catch (e: any) {
@@ -51,6 +51,26 @@ export async function handleProfile(req: Request, path: string): Promise<Respons
     } catch (e: any) {
       return new Response(partial("", { type: "error", message: e.message }), { headers: { "Content-Type": "text/html" } });
     }
+  }
+
+  // POST /u/:name/pin
+  const pinMatch = path.match(/^\/u\/([^/]+)\/pin$/);
+  if (pinMatch && req.method === "POST") {
+    const name = decodeURIComponent(pinMatch[1]);
+    pinAgent(name);
+    logAction("pin_agent", name);
+    if (isHtmx(req)) return new Response(partial("", { type: "success", message: `Pinned ${name}` }), { headers: { "Content-Type": "text/html" } });
+    return Response.redirect(`/u/${name}`, 303);
+  }
+
+  // POST /u/:name/unpin
+  const unpinMatch = path.match(/^\/u\/([^/]+)\/unpin$/);
+  if (unpinMatch && req.method === "POST") {
+    const name = decodeURIComponent(unpinMatch[1]);
+    unpinAgent(name);
+    logAction("unpin_agent", name);
+    if (isHtmx(req)) return new Response(partial("", { type: "success", message: `Unpinned ${name}` }), { headers: { "Content-Type": "text/html" } });
+    return Response.redirect(`/u/${name}`, 303);
   }
 
   // POST /profile/update — update own description
